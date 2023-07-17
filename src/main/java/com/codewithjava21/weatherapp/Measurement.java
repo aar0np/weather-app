@@ -3,7 +3,7 @@ package com.codewithjava21.weatherapp;
 public class Measurement {
 
 	private String unitCode;
-	private Double value;
+	private float value;
 	
 	public String getUnitCode() {
 		return unitCode;
@@ -13,11 +13,11 @@ public class Measurement {
 		this.unitCode = unitCode;
 	}
 	
-	public Double getValue() {
+	public float getValue() {
 		return value;
 	}
 	
-	public void setValue(Double value) {
+	public void setValue(float value) {
 		this.value = value;
 	}
 }

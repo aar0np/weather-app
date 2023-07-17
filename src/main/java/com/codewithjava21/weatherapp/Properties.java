@@ -6,6 +6,7 @@ public class Properties {
 	
 	private String station;
 	private Instant timestamp;
+	private String icon;
 	private Measurement temperature;
 	private Measurement dewpoint;
 	private Measurement windDirection;
@@ -35,6 +36,14 @@ public class Properties {
 	
 	public void setTimestamp(Instant timestamp) {
 		this.timestamp = timestamp;
+	}
+	
+	public String getIcon() {
+		return icon;
+	}
+	
+	public void setIcon(String icon) {
+		this.icon = icon;
 	}
 	
 	public Measurement getTemperature() {

@@ -1,7 +1,5 @@
 package com.codewithjava21.weatherapp;
 
-import java.util.Map;
-
 public class LatestWeather {
 
 	private String id;

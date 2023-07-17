@@ -9,17 +9,27 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.LinkedHashMap;
-import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+
+import java.util.Map;
+import java.util.HashMap;
+
+import javax.servlet.http.HttpServletRequest;
+
 
 @RequestMapping("/weather")
 @RestController
 public class WeatherAppController {
 
 	private RestTemplate restTemplate;
+	private WeatherAppRepository weatherRepo;
 	
-	public WeatherAppController() {
+	public WeatherAppController(WeatherAppRepository weatherAppRepo) {
+		// build Rest template for calling NWS endpoint
 		restTemplate = new RestTemplateBuilder().build();
+		// instantiate Cassandra repository
+		weatherRepo = weatherAppRepo;
 	}
 	
 	@GetMapping("/helloworld")
@@ -28,15 +38,69 @@ public class WeatherAppController {
 	}
 
 	@PutMapping("/latest/{stationid}")
-	public ResponseEntity<LatestWeather> putLatestData(HttpServletRequest req,
-			@PathVariable(value="stationid") String stationid) {
+	public ResponseEntity<WeatherEntity> putLatestData(HttpServletRequest req,
+			@PathVariable(value="stationid") String stationId) {
 		
 		LatestWeather response = restTemplate.getForObject(
-				"https://api.weather.gov/stations/" + stationid + "/observations/latest",
+				"https://api.weather.gov/stations/" + stationId + "/observations/latest",
 				LatestWeather.class);
 		
-				
-		return ResponseEntity.ok(response);
+		// map latest reading to a WeatherEntity
+		WeatherEntity weatherEntity = mapLatestWeatherToWeatherEntity(response, stationId);
+		
+		// save weather reading
+		weatherRepo.save(weatherEntity);
+		
+		return ResponseEntity.ok(weatherEntity);
 	}
 
+	private WeatherEntity mapLatestWeatherToWeatherEntity(LatestWeather weather, String stationId) {
+		
+		WeatherEntity returnVal = new WeatherEntity();
+		
+		// use timestamp from response to create date
+		Instant timestamp = weather.getProperties().getTimestamp();
+		int bucket = getBucket(timestamp);
+		
+		// gen PK
+		WeatherPrimaryKey key = new WeatherPrimaryKey(stationId, bucket, timestamp);
+		
+		returnVal.setPrimaryKey(key);
+		returnVal.setReadingIcon(weather.getProperties().getIcon());
+		returnVal.setStationCoordinatesLatitude(weather.getGeometry().getCoordinates()[0]);
+		returnVal.setStationCoordinatesLongitude(weather.getGeometry().getCoordinates()[1]);
+		returnVal.setTemperatureCelsius(weather.getProperties().getTemperature().getValue());
+		returnVal.setWindDirectionDegrees((int)weather.getProperties().getWindDirection().getValue());
+		returnVal.setWindGustKMH(weather.getProperties().getWindGust().getValue());
+		returnVal.setPrecipitationLastHour(weather.getProperties().getPrecipitationLastHour().getValue());
+		
+		// process cloud layers
+		CloudLayer[] clouds = weather.getProperties().getCloudLayers();
+		Map<Integer,String> cloudMap = new HashMap<>();
+		
+		for (CloudLayer layer : clouds) {
+			// measurements come back as floats, but we need ints for cloud levels
+			cloudMap.put((int)layer.getBase().getValue(), layer.getAmount());
+		}
+		
+		returnVal.setCloudCover(cloudMap);
+		
+		return returnVal;
+	}
+	
+	private int getBucket(Instant timestamp) {
+		
+		ZonedDateTime date = ZonedDateTime.parse(timestamp.toString());
+		// parse date into year and month to create the month bucket
+		Integer year = date.getYear();
+		Integer month = date.getMonthValue();
+		StringBuilder bucket = new StringBuilder(year.toString());
+		
+		if (month < 10) {
+			bucket.append("0");
+		}
+		bucket.append(month);
+
+		return Integer.parseInt(bucket.toString());
+	}
 }

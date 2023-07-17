@@ -3,7 +3,7 @@ package com.codewithjava21.weatherapp;
 public class Geometry {
 	
 	private String type;
-	private Double[] coordinates;
+	private float[] coordinates;
 	
 	public String getType() {
 		return type;
@@ -13,11 +13,11 @@ public class Geometry {
 		this.type = type;
 	}
 	
-	public Double[] getCoordinates() {
+	public float[] getCoordinates() {
 		return coordinates;
 	}
 	
-	public void setCoordinates(Double[] coordinates) {
+	public void setCoordinates(float[] coordinates) {
 		this.coordinates = coordinates;
 	}
 }
