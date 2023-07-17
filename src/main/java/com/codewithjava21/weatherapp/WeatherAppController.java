@@ -15,9 +15,6 @@ import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.HashMap;
 
-import javax.servlet.http.HttpServletRequest;
-
-
 @RequestMapping("/weather")
 @RestController
 public class WeatherAppController {
@@ -33,12 +30,12 @@ public class WeatherAppController {
 	}
 	
 	@GetMapping("/helloworld")
-	public ResponseEntity<String> getHello(HttpServletRequest req) {
+	public ResponseEntity<String> getHello() {
 		return ResponseEntity.ok("Hello world!\n");
 	}
 
 	@PutMapping("/latest/{stationid}")
-	public ResponseEntity<WeatherEntity> putLatestData(HttpServletRequest req,
+	public ResponseEntity<WeatherEntity> putLatestData(
 			@PathVariable(value="stationid") String stationId) {
 		
 		LatestWeather response = restTemplate.getForObject(

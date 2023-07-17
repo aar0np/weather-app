@@ -24,7 +24,7 @@ astra:
       enabled: true
     driver-config:
       basic:
-        session-keyspace: weatherapp
+        session-keyspace: ${ASTRA_DB_KEYSPACE}
         request:
           timeout: 8s
           consistency: LOCAL_QUORUM

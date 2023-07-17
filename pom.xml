@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.7.13</version>
+		<version>3.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.codewithjava21</groupId>
@@ -24,8 +24,8 @@
 		</dependency>
 		<dependency>
 			<groupId>com.datastax.astra</groupId>
-			<artifactId>astra-spring-boot-starter</artifactId>
-			<version>0.4</version>
+			<artifactId>astra-spring-boot-3x-starter</artifactId>
+			<version>0.6.4</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
