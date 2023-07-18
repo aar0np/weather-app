@@ -65,8 +65,8 @@ public class WeatherMainView extends VerticalLayout {
 	}
 	
 	private Component buildControls() {
-		var layout = new HorizontalLayout();
-		var queryButton = new Button("Refresh");
+		HorizontalLayout layout = new HorizontalLayout();
+		Button queryButton = new Button("Refresh");
 		queryButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 		
 		layout.add(queryButton, buildUnitRadio());
@@ -79,7 +79,7 @@ public class WeatherMainView extends VerticalLayout {
 	}
 	
 	private Component buildUnitRadio() {
-		var layout = new HorizontalLayout();
+		HorizontalLayout layout = new HorizontalLayout();
 
 		unitSelector.setLabel("Units");
 		unitSelector.setItems("Celsius/Metric", "Fahrenheit/Imperial");
@@ -95,7 +95,7 @@ public class WeatherMainView extends VerticalLayout {
 	}
 
 	private Component buildStationDataView() {
-		var layout = new HorizontalLayout();
+		HorizontalLayout layout = new HorizontalLayout();
 
 		layout.add(stationId, month, iconImage, dateTime);
 		
@@ -103,7 +103,7 @@ public class WeatherMainView extends VerticalLayout {
 	}
 	
 	private Component buildTempPrecipView() {
-		var layout = new HorizontalLayout();
+		HorizontalLayout layout = new HorizontalLayout();
 
 		layout.add(temperature, precipitationLastHour, buildWindDataView());
 		
@@ -112,7 +112,7 @@ public class WeatherMainView extends VerticalLayout {
 	}
 	
 	private Component buildWindDataView() {
-		var layout = new HorizontalLayout();
+		HorizontalLayout layout = new HorizontalLayout();
 		
 		layout.add(windSpeed, windDirection);
 		
@@ -120,7 +120,7 @@ public class WeatherMainView extends VerticalLayout {
 	}	
 	
 	private Component buildCloudVisibilityView() {
-		var layout = new HorizontalLayout();
+		HorizontalLayout layout = new HorizontalLayout();
 		
 		layout.add(cloudGrid, visibility);
 		return layout;
