@@ -101,7 +101,7 @@ public class WeatherAppController {
 		return returnVal;
 	}
 	
-	private int getBucket(Instant timestamp) {
+	public int getBucket(Instant timestamp) {
 		
 		ZonedDateTime date = ZonedDateTime.parse(timestamp.toString());
 		// parse date into year and month to create the month bucket
