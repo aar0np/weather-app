@@ -34,7 +34,7 @@ public class WeatherAppController {
 		return ResponseEntity.ok("Hello world!\n");
 	}
 
-	@PutMapping("/latest/{stationid}")
+	@PutMapping("/latest/station/{stationid}")
 	public ResponseEntity<WeatherEntity> putLatestData(
 			@PathVariable(value="stationid") String stationId) {
 		
@@ -49,6 +49,22 @@ public class WeatherAppController {
 		weatherRepo.save(weatherEntity);
 		
 		return ResponseEntity.ok(weatherEntity);
+	}
+	
+	@GetMapping("/latest/station/{stationid}/month/{month}")
+	public ResponseEntity<WeatherEntity> getLatestData(
+			@PathVariable(value="stationid") String stationId,
+			@PathVariable(value="month") int monthBucket) {
+		
+		WeatherEntity recentWeather =
+				weatherRepo.findByStationIdAndMonthBucket(stationId, monthBucket);
+		
+		
+		if (recentWeather != null) {
+			return ResponseEntity.ok(recentWeather);
+		} else {
+			return ResponseEntity.notFound().build();
+		}
 	}
 
 	private WeatherEntity mapLatestWeatherToWeatherEntity(LatestWeather weather, String stationId) {
