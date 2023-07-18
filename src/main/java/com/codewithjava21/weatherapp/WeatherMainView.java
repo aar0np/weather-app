@@ -105,19 +105,11 @@ public class WeatherMainView extends VerticalLayout {
 	private Component buildTempPrecipView() {
 		HorizontalLayout layout = new HorizontalLayout();
 
-		layout.add(temperature, precipitationLastHour, buildWindDataView());
+		layout.add(temperature, precipitationLastHour, windSpeed, windDirection);
 		
 		return layout;
 		
 	}
-	
-	private Component buildWindDataView() {
-		HorizontalLayout layout = new HorizontalLayout();
-		
-		layout.add(windSpeed, windDirection);
-		
-		return layout;
-	}	
 	
 	private Component buildCloudVisibilityView() {
 		HorizontalLayout layout = new HorizontalLayout();
@@ -139,9 +131,6 @@ public class WeatherMainView extends VerticalLayout {
 		Integer visib = latestWeather.getVisibilityM();
 		Float precip = latestWeather.getPrecipitationLastHour();
 
-		dateTime.setValue(time.toString());
-		iconImage.setSrc(iconURL);
-
 		if (!unitSelector.getValue().equals("Celsius/Metric")) {
 			temp = computeFahrenheit(temp);
 			windSpd = computeMiles(windSpd);
@@ -152,6 +141,8 @@ public class WeatherMainView extends VerticalLayout {
 		temperature.setValue(temp.toString());
 		windSpeed.setValue(windSpd.toString());
 		precipitationLastHour.setValue(precip.toString());
+		dateTime.setValue(time.toString());
+		iconImage.setSrc(iconURL);
 
 		if (visib > 0) {
 			visibility.setValue(visib.toString());
