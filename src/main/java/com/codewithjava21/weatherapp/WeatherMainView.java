@@ -57,18 +57,23 @@ public class WeatherMainView extends VerticalLayout {
 		cloudGrid.setWidth("250px");
 		cloudGrid.setHeight("250px");
 
-		add(buildRefresh());
-		add(buildStationDataView(), iconImage, dateTime);
-		add(buildUnitRadio());
+		// compose layout
+		add(buildControls());
+		add(buildStationDataView());
 		add(buildTempPrecipView());
-		add(buildWindDataView());
-		add(visibility, cloudGrid);
+		add(buildCloudVisibilityView());
 	}
 	
-	private Component buildStationDataView() {
+	private Component buildControls() {
 		var layout = new HorizontalLayout();
-
-		layout.add(stationId, month);
+		var queryButton = new Button("Refresh");
+		queryButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+		
+		layout.add(queryButton, buildUnitRadio());
+		
+		queryButton.addClickListener(click -> {
+			refreshData();
+		});
 		
 		return layout;
 	}
@@ -88,11 +93,19 @@ public class WeatherMainView extends VerticalLayout {
 		
 		return layout;		
 	}
+
+	private Component buildStationDataView() {
+		var layout = new HorizontalLayout();
+
+		layout.add(stationId, month, iconImage, dateTime);
+		
+		return layout;
+	}
 	
 	private Component buildTempPrecipView() {
 		var layout = new HorizontalLayout();
 
-		layout.add(temperature, precipitationLastHour);
+		layout.add(temperature, precipitationLastHour, buildWindDataView());
 		
 		return layout;
 		
@@ -106,26 +119,19 @@ public class WeatherMainView extends VerticalLayout {
 		return layout;
 	}	
 	
-	private Component buildRefresh() {
+	private Component buildCloudVisibilityView() {
 		var layout = new HorizontalLayout();
-		var queryButton = new Button("Refresh");
-		queryButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 		
-		layout.add(queryButton);
-		
-		queryButton.addClickListener(click -> {
-			refreshData();
-		});
-		
+		layout.add(cloudGrid, visibility);
 		return layout;
 	}
 	
 	private void refreshData() {
-		ResponseEntity<WeatherEntity> latest = controller.getLatestData(
+		ResponseEntity<WeatherReading> latest = controller.getLatestData(
 				stationId.getValue(), Integer.parseInt(month.getValue()));
-		WeatherEntity latestWeather = latest.getBody();
+		WeatherReading latestWeather = latest.getBody();
 		
-		Instant time = latestWeather.getPrimaryKey().getTimestamp();
+		Instant time = latestWeather.getTimestamp();
 		Float temp = latestWeather.getTemperatureCelsius();
 		Float windSpd = latestWeather.getWindSpeedKMH();
 		String iconURL = latestWeather.getReadingIcon();
@@ -140,26 +146,26 @@ public class WeatherMainView extends VerticalLayout {
 			temp = computeFahrenheit(temp);
 			windSpd = computeMiles(windSpd);
 			visib = computeFeet(visib);
+			precip = computeInches(precip);
 		}
 
 		temperature.setValue(temp.toString());
 		windSpeed.setValue(windSpd.toString());
-		
+		precipitationLastHour.setValue(precip.toString());
+
+		if (visib > 0) {
+			visibility.setValue(visib.toString());
+		} else {
+			visibility.setValue("Unlimited");
+		}
+
 		if (windSpd > 0) {
 			windDirection.setValue(convertWindDirection(windDir));
 			windDirection.setVisible(true);
 		} else {
 			windDirection.setVisible(false);
 		}
-		
-		if (visib > 0) {
-			visibility.setValue(visib.toString());
-		} else {
-			visibility.setValue("Unlimited");
-		}
-		
-		precipitationLastHour.setValue(precip.toString());
-		
+						
 		List<Cloud> clouds = new ArrayList<>();
 		
 		for (int key : latestWeather.getCloudCover().keySet()) {
@@ -211,5 +217,9 @@ public class WeatherMainView extends VerticalLayout {
 	
 	private int computeFeet(int meters) {
 		return (int)(meters * 3.281F);
+	}
+	
+	private float computeInches(float millimeters) {
+		return millimeters / 25.4F;
 	}
 }

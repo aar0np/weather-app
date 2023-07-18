@@ -35,7 +35,7 @@ public class WeatherAppController {
 	}
 
 	@PutMapping("/latest/station/{stationid}")
-	public ResponseEntity<WeatherEntity> putLatestData(
+	public ResponseEntity<WeatherReading> putLatestData(
 			@PathVariable(value="stationid") String stationId) {
 		
 		LatestWeather response = restTemplate.getForObject(
@@ -48,20 +48,23 @@ public class WeatherAppController {
 		// save weather reading
 		weatherRepo.save(weatherEntity);
 		
-		return ResponseEntity.ok(weatherEntity);
+		WeatherReading currentReading = mapWeatherEntityToWeatherReading(weatherEntity);
+		
+		return ResponseEntity.ok(currentReading);
 	}
 	
 	@GetMapping("/latest/station/{stationid}/month/{month}")
-	public ResponseEntity<WeatherEntity> getLatestData(
+	public ResponseEntity<WeatherReading> getLatestData(
 			@PathVariable(value="stationid") String stationId,
 			@PathVariable(value="month") int monthBucket) {
 		
 		WeatherEntity recentWeather =
 				weatherRepo.findByStationIdAndMonthBucket(stationId, monthBucket);
 		
+		WeatherReading currentReading = mapWeatherEntityToWeatherReading(recentWeather);
 		
-		if (recentWeather != null) {
-			return ResponseEntity.ok(recentWeather);
+		if (currentReading != null) {
+			return ResponseEntity.ok(currentReading);
 		} else {
 			return ResponseEntity.notFound().build();
 		}
@@ -101,7 +104,27 @@ public class WeatherAppController {
 		return returnVal;
 	}
 	
-	public int getBucket(Instant timestamp) {
+	private WeatherReading mapWeatherEntityToWeatherReading(WeatherEntity entity) {
+		WeatherReading returnVal = new WeatherReading();
+		
+		returnVal.setStationId(entity.getPrimaryKey().getStationId());
+		returnVal.setMonthBucket(entity.getPrimaryKey().getMonthBucket());
+		returnVal.setStationCoordinatesLatitude(entity.getStationCoordinatesLatitude());
+		returnVal.setStationCoordinatesLongitude(entity.getStationCoordinatesLongitude());
+		returnVal.setTimestamp(entity.getPrimaryKey().getTimestamp());
+		returnVal.setTemperatureCelsius(entity.getTemperatureCelsius());
+		returnVal.setWindSpeedKMH(entity.getWindSpeedKMH());
+		returnVal.setWindDirectionDegrees(entity.getWindDirectionDegrees());
+		returnVal.setWindGustKMH(entity.getWindGustKMH());
+		returnVal.setReadingIcon(entity.getReadingIcon());
+		returnVal.setVisibilityM(entity.getVisibilityM());
+		returnVal.setPrecipitationLastHour(entity.getPrecipitationLastHour());
+		returnVal.setCloudCover(entity.getCloudCover());
+		
+		return returnVal;
+	}
+	
+	protected int getBucket(Instant timestamp) {
 		
 		ZonedDateTime date = ZonedDateTime.parse(timestamp.toString());
 		// parse date into year and month to create the month bucket
