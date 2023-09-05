@@ -9,7 +9,7 @@ This application requires a running [Astra DB](https://astra.datastax.com) cloud
 
 _Note: As of this writing, only databases created on the Google Cloud Platform (GCP) provider qualify for Astra DB's free tier._
 
-In the book "Code with Java 21," the keyspace is named "weatherapp." Really, the keyspace can be named anything, but its name needs to be reflected in the *ASTRA_DB_KEYSPACE* environment variable.
+In the book "Code with Java 21," the keyspace is named "weatherapp." Really, the keyspace can be named anything, but its name needs to be reflected in the **ASTRA_DB_KEYSPACE** environment variable.
 
 Whatever the name of the keyspace, it should have the following Cassandra table created within:
 
@@ -38,10 +38,10 @@ A token from an appropriately-scoped role is required. As this application use S
 
 This application requires the following environment variables to be set:
 
- - *ASTRA_DB_KEYSPACE* - The database keyspace containing the tables required by the Weather Application.
- - *ASTRA_DB_REGION* - The cloud region of the database.
- - *ASTRA_DB_ID* - The identifier of the database.
- - *ASTRA_DB_APP_TOKEN* - The token obtained from Astra DB.
+ - **ASTRA_DB_KEYSPACE** - The database keyspace containing the tables required by the Weather Application.
+ - **ASTRA_DB_REGION** - The cloud region of the database.
+ - **ASTRA_DB_ID** - The identifier of the database.
+ - **ASTRA_DB_APP_TOKEN** - The token obtained from Astra DB.
 
 In a Mac/Linux environment, the environment varaibles can be set like this (example):
 
@@ -81,7 +81,7 @@ The most-recent reading from the NWS can be loaded into the application by invok
 
 ### Viewing Data:
 
-In addition to the user interface, the most-recently loaded weather reading from the NWS (stored in the Weather Application's database) can be viewed on the following _GET_ endpoint: [http://127.0.0.1:8080/weather/latest/station/kmsp/month/202307](http://127.0.0.1:8080/weather/latest/station/kmsp/month/202307)
+In addition to the user interface, the most-recently loaded weather reading from the NWS (stored in the Weather Application's database) can be viewed on the following _GET_ endpoint: [http://127.0.0.1:8080/weather/latest/station/kmsp/month/202307](http://127.0.0.1:8080/weather/latest/station/kmsp/month/202307).  Note that the month is specified in the `YYYYMM` format.
 
     curl -X GET http://127.0.0.1:8080/weather/latest/station/kmsp/month/202307
 
