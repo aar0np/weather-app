@@ -43,7 +43,7 @@ This application requires the following environment variables to be set:
  - **ASTRA_DB_ID** - The identifier of the database.
  - **ASTRA_DB_APP_TOKEN** - The token obtained from Astra DB.
 
-In a Mac/Linux environment, the environment varaibles can be set like this (example):
+In a Mac/Linux environment, the environment varaibles can be set from a terminal like this (example):
 
 ```
 export ASTRA_DB_KEYSPACE=weatherapp
@@ -51,6 +51,16 @@ export ASTRA_DB_REGION=us-east1
 export ASTRA_DB_ID=31111111-1111-4111-1111-111111111111
 export ASTRA_DB_APP_TOKEN=AstraCS:BxinhBlahBlahBlahFHqKZw:d6532818082NotARealTokenc18d40
 ```
+
+In a Windows environment, the environment variables can be set from the commmand line like this:
+
+```
+set ASTRA_DB_KEYSPACE=weatherapp
+set ASTRA_DB_REGION=us-east1
+set ASTRA_DB_ID=31111111-1111-4111-1111-111111111111
+set ASTRA_DB_APP_TOKEN=AstraCS:BxinhBlahBlahBlahFHqKZw:d6532818082NotARealTokenc18d40
+```
+
 
 ## To build:
 
