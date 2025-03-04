@@ -36,7 +36,7 @@ public class WeatherMainView extends VerticalLayout {
 	
 	private WeatherAppController controller;
 	
-	private record Cloud(int elevation, String desc) {
+	public record Cloud(int elevation, String desc) {
 	}
 	
 	public WeatherMainView(WeatherAppRepository repo) {

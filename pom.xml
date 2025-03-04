@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.1.1</version>
+		<version>3.4.3</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.codewithjava21</groupId>
@@ -14,8 +14,8 @@
 	<name>weatherapp</name>
 	<description>Consumes and displays weather data</description>
 	<properties>
-		<java.version>21</java.version>
-		<vaadin.version>24.1.2</vaadin.version>
+		<java.version>23</java.version>
+		<vaadin.version>24.6.5</vaadin.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -25,7 +25,7 @@
 		<dependency>
 			<groupId>com.datastax.astra</groupId>
 			<artifactId>astra-spring-boot-3x-starter</artifactId>
-			<version>0.6.4</version>
+			<version>1.2.9</version>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
