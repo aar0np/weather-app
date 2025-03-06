@@ -14,7 +14,7 @@
 	<name>weatherapp</name>
 	<description>Consumes and displays weather data</description>
 	<properties>
-		<java.version>23</java.version>
+		<java.version>17</java.version>
 		<vaadin.version>24.6.5</vaadin.version>
 	</properties>
 	<dependencies>
