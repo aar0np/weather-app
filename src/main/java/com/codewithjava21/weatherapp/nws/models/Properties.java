@@ -1,4 +1,4 @@
-package com.codewithjava21.weatherapp;
+package com.codewithjava21.weatherapp.nws.models;
 
 import java.time.Instant;
 

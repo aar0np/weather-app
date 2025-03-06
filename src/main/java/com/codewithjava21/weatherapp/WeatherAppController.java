@@ -1,6 +1,10 @@
 package com.codewithjava21.weatherapp;
 
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -8,6 +12,13 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+
+import com.codewithjava21.weatherapp.langflow.models.LangflowOutput1;
+import com.codewithjava21.weatherapp.langflow.models.LangflowResponse;
+import com.codewithjava21.weatherapp.nws.models.CloudLayer;
+import com.codewithjava21.weatherapp.nws.models.LatestWeather;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -21,12 +32,22 @@ public class WeatherAppController {
 
 	private RestTemplate restTemplate;
 	private WeatherAppRepository weatherRepo;
+
+	private HttpHeaders langflowHeader;
+	
+	private static final String LANGFLOW_URL = System.getenv("ASTRA_LANGFLOW_URL");
+	private static final String BEARER_TOKEN = System.getenv("ASTRA_DB_APP_TOKEN");
 	
 	public WeatherAppController(WeatherAppRepository weatherAppRepo) {
-		// build Rest template for calling NWS endpoint
+		// build Rest template for calling NWS and Langflow endpoints
 		restTemplate = new RestTemplateBuilder().build();
+
 		// instantiate Cassandra repository
 		weatherRepo = weatherAppRepo;
+
+		langflowHeader = new HttpHeaders();
+		langflowHeader.setContentType(MediaType.APPLICATION_JSON);
+		langflowHeader.add("Authorization", "Bearer " + BEARER_TOKEN);
 	}
 	
 	@GetMapping("/helloworld")
@@ -70,6 +91,101 @@ public class WeatherAppController {
 		}
 	}
 
+	public WeatherReading askAgent (AgentRequest req) {
+		
+		String reqJSON = new Gson().toJson(req);
+		HttpEntity<String> requestEntity = new HttpEntity<>(reqJSON, langflowHeader);
+
+		ResponseEntity<LangflowResponse> resp = restTemplate.exchange(LANGFLOW_URL,
+				HttpMethod.POST,
+				requestEntity,
+				LangflowResponse.class
+				);
+		
+		LangflowResponse lfResp = resp.getBody();
+		LangflowOutput1[] outputs = lfResp.getOutputs();
+		// String strMessage = outputs[0].getOutputs()[0].getResults().getMessage().getData().getText();
+		
+		return mapLangflowResponseToWeatherReading(outputs);
+	}
+	
+	private WeatherReading mapLangflowResponseToWeatherReading(LangflowOutput1[] outputs) {
+		WeatherReading returnVal = new WeatherReading();
+		String strMessage = outputs[0].getOutputs()[0].getResults().getMessage().getData().getText();
+		strMessage = strMessage.replace("**", "");
+		
+		//JsonObject gson = new Gson().fromJson(strMessage, JsonObject.class);
+		//JsonObject properties = gson.get("properties").getAsJsonObject();
+		//JsonObject temperature = properties.get("temperature").getAsJsonObject();	
+		
+		//System.out.println("Message: " + strMessage);
+
+		int stationPos = strMessage.indexOf("Raw Message:");
+		int tempPos = strMessage.indexOf("Temperature:");
+		int degreeTempPos = strMessage.indexOf("°", tempPos + 13);
+		int timestampPos = strMessage.indexOf("Timestamp:");
+		int iconPos = strMessage.indexOf("[Weather Icon]");
+		int iconRightParen = strMessage.indexOf(")", iconPos + 16);
+		int windSpeedPos = strMessage.indexOf("Wind Speed:");
+		int windKmPos = strMessage.indexOf("km/h", windSpeedPos + 12);
+		int windDirPos = strMessage.indexOf("Wind Direction:");
+		int windDirDegPos = strMessage.indexOf("°", windDirPos + 16);
+		int visPos = strMessage.indexOf("Visibility:");
+		int visMPos = strMessage.indexOf("m", visPos + 12);
+		int cloudPos = strMessage.indexOf("Cloud Layers:");
+		int nextColon = strMessage.indexOf(":", cloudPos + 14);
+		
+		returnVal.setStationId(strMessage.substring(stationPos + 13, stationPos + 17).toLowerCase());
+		returnVal.setTemperatureCelsius(Float.parseFloat(strMessage.substring(tempPos + 13, degreeTempPos)));
+		returnVal.setTimestamp(Instant.parse(strMessage.substring(timestampPos + 11, timestampPos + 36)));		
+		returnVal.setReadingIcon(strMessage.substring(iconPos + 15, iconRightParen));
+		returnVal.setWindSpeedKMH(Float.parseFloat(strMessage.substring(windSpeedPos + 12, windKmPos)));
+		returnVal.setWindDirectionDegrees(Integer.parseInt(strMessage.substring(windDirPos + 16, windDirDegPos)));
+		returnVal.setVisibilityM(Integer.parseInt(strMessage.substring(visPos + 12, visMPos).replace(",", "").trim()));
+
+		StringBuilder cloudLayers = new StringBuilder();
+		
+		if (nextColon > 0) {
+			cloudLayers.append(strMessage.substring(cloudPos + 14, nextColon));	
+		} else {
+			cloudLayers.append(strMessage.substring(cloudPos + 14));				
+		}
+		
+		String cloudLayer = cloudLayers.toString();
+		
+		Map<Integer,String> cloudMap = new HashMap<>();
+		int cloudsAt = cloudLayer.indexOf("clouds at");
+		int start = 0;
+		
+		while (cloudsAt > 0) {
+			String strClouds = cloudLayer.substring(start, cloudsAt).toLowerCase();
+			
+			if (strClouds.contains("few")) {
+				strClouds = "FEW";
+			} else if (strClouds.contains("scattered") || strClouds.contains("sct")) {
+				strClouds = "SCT";
+			} else if (strClouds.contains("broken") || strClouds.contains("bkn")) {
+				strClouds = "BKN";
+			} else if (strClouds.contains("overcast") || strClouds.contains("ovc")) {
+				strClouds = "OVC";
+			} else {
+				strClouds = "CLR";
+			}
+			
+			int cloudMPos = cloudLayer.indexOf("m", cloudsAt + 10);
+			Float cloudLevel = Float.parseFloat(cloudLayer.substring(cloudsAt + 10, cloudMPos).replace(",", "").trim());
+
+			cloudMap.put(cloudLevel.intValue(), strClouds);
+			
+			cloudsAt = cloudLayer.indexOf("clouds at", cloudsAt + 1);
+			start = cloudsAt - 10;
+		}
+		
+		returnVal.setCloudCover(cloudMap);
+		
+		return returnVal;
+	}
+	
 	private WeatherEntity mapLatestWeatherToWeatherEntity(LatestWeather weather, String stationId) {
 		
 		WeatherEntity returnVal = new WeatherEntity();

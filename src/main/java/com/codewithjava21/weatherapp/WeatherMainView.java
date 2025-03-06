@@ -4,6 +4,7 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.html.Image;
+import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
@@ -11,6 +12,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.router.Route;
 
+import java.text.DecimalFormat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +25,7 @@ public class WeatherMainView extends VerticalLayout {
 	private static final long serialVersionUID = -4548421578729299243L;
 
 	private Image iconImage = new Image();
+	private Paragraph tempLarge = new Paragraph();
 	private TextField stationId = new TextField("Station ID");
 	private TextField month = new TextField("Year/Month");
 	private TextField dateTime = new TextField("Date/Time");
@@ -35,6 +38,7 @@ public class WeatherMainView extends VerticalLayout {
 	private Grid<Cloud> cloudGrid = new Grid<>(Cloud.class);
 	
 	private WeatherAppController controller;
+	private WeatherReading latestWeather = new WeatherReading();
 	
 	public record Cloud(int elevation, String desc) {
 	}
@@ -54,25 +58,64 @@ public class WeatherMainView extends VerticalLayout {
 		cloudGrid.addColumn(Cloud::desc)
 			.setWidth("150px")
 			.setHeader("Description");
-		cloudGrid.setWidth("250px");
-		cloudGrid.setHeight("250px");
+		cloudGrid.setWidth("200px");
+		cloudGrid.setHeight("200px");
 
+		// set icon size
+		iconImage.setWidth("500px");
+		
 		// compose layout
 		add(buildControls());
-		add(buildStationDataView());
-		add(buildTempPrecipView());
-		add(buildCloudVisibilityView());
+		HorizontalLayout horizontalLayout = new HorizontalLayout(); 
+		VerticalLayout verticalLayout = new VerticalLayout();
+		
+		horizontalLayout.add(buildIconView());
+		
+		verticalLayout.add(buildUnitRadio());
+		verticalLayout.add(buildStationDataView());
+		verticalLayout.add(buildTempPrecipView());
+		verticalLayout.add(buildCloudVisibilityView());
+		
+		horizontalLayout.add(verticalLayout);
+		
+		add(horizontalLayout);
+	}
+	
+	private Component buildIconView() {
+		HorizontalLayout layout = new HorizontalLayout();
+		
+		// set icon size
+		iconImage.setWidth("500px");
+		
+		// configure temperature display
+		tempLarge.getStyle().set("font-size", "150px");
+		tempLarge.getStyle().set("font-weight", "bold");
+		tempLarge.getStyle().set("color", "#FFFFFF");
+		tempLarge.getStyle().set("text-shadow", "1px 1px 2px black");
+		tempLarge.getStyle().set("position", "absolute");
+		tempLarge.getStyle().set("left", "40px");
+		tempLarge.getStyle().set("top", "140px");
+		
+		layout.add(iconImage, tempLarge);
+		
+		return layout;
 	}
 	
 	private Component buildControls() {
 		HorizontalLayout layout = new HorizontalLayout();
-		Button queryButton = new Button("Refresh");
-		queryButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+		Button langflowButton = new Button("Langflow Refresh");
+		langflowButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+		Button astraButton = new Button("Astra DB Refresh");
+		astraButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 		
-		layout.add(queryButton, buildUnitRadio());
+		layout.add(langflowButton, astraButton);
 		
-		queryButton.addClickListener(click -> {
-			refreshData();
+		langflowButton.addClickListener(click -> {
+			refreshLangflow();
+		});
+		
+		astraButton.addClickListener(click -> {
+			refreshAstra();
 		});
 		
 		return layout;
@@ -86,7 +129,7 @@ public class WeatherMainView extends VerticalLayout {
 		unitSelector.setValue("Celsius/Metric");
 		
 		unitSelector.addValueChangeListener(click -> {
-			refreshData();
+			refreshData(latestWeather);
 		});
 		
 		layout.add(unitSelector);
@@ -97,7 +140,8 @@ public class WeatherMainView extends VerticalLayout {
 	private Component buildStationDataView() {
 		HorizontalLayout layout = new HorizontalLayout();
 
-		layout.add(stationId, month, iconImage, dateTime);
+		//layout.add(stationId, month, iconImage, dateTime);
+		layout.add(stationId, month, dateTime);
 		
 		return layout;
 	}
@@ -108,7 +152,6 @@ public class WeatherMainView extends VerticalLayout {
 		layout.add(temperature, precipitationLastHour, windSpeed, windDirection);
 		
 		return layout;
-		
 	}
 	
 	private Component buildCloudVisibilityView() {
@@ -118,10 +161,22 @@ public class WeatherMainView extends VerticalLayout {
 		return layout;
 	}
 	
-	private void refreshData() {
+	private void refreshAstra() {
 		ResponseEntity<WeatherReading> latest = controller.getLatestData(
 				stationId.getValue(), Integer.parseInt(month.getValue()));
-		WeatherReading latestWeather = latest.getBody();
+		latestWeather = latest.getBody();
+
+		refreshData(latestWeather);
+	}
+	private void refreshLangflow() {
+
+		String message = "Please retrieve the latest weather data (including the weather icon url) in a text format using this endpoint: https://api.weather.gov/stations/KMSP/observations/latest";
+		latestWeather = controller.askAgent(new AgentRequest(message));
+	
+		refreshData(latestWeather);
+	}
+	
+	private void refreshData(WeatherReading latestWeather) {
 		
 		Instant time = latestWeather.getTimestamp();
 		Float temp = latestWeather.getTemperatureCelsius();
@@ -131,14 +186,36 @@ public class WeatherMainView extends VerticalLayout {
 		Integer visib = latestWeather.getVisibilityM();
 		Float precip = latestWeather.getPrecipitationLastHour();
 
+		StringBuilder tempBuilder = new StringBuilder();
+				
 		if (!unitSelector.getValue().equals("Celsius/Metric")) {
-			temp = computeFahrenheit(temp);
+			DecimalFormat df = new DecimalFormat("0");
+			float localTemp = computeFahrenheit(temp);
+			
+			if (localTemp > -1f) {
+				tempLarge.getStyle().set("left", "90px");
+			} else {
+				tempLarge.getStyle().set("left", "40px");
+			}
+
+			tempBuilder.append(df.format(localTemp));
+			tempBuilder.append("°F");
 			windSpd = computeMiles(windSpd);
 			visib = computeFeet(visib);
 			precip = computeInches(precip);
-		}
+		} else {
+			if (temp > -1f) {
+				tempLarge.getStyle().set("left", "90px");
+			} else {
+				tempLarge.getStyle().set("left", "40px");
+			}
 
-		temperature.setValue(temp.toString());
+			tempBuilder.append(temp);
+			tempBuilder.append("°C");
+		}
+		
+		tempLarge.setText(tempBuilder.toString());
+		temperature.setValue(tempBuilder.toString());
 		windSpeed.setValue(windSpd.toString());
 		precipitationLastHour.setValue(precip.toString());
 		dateTime.setValue(time.toString());
