@@ -1,4 +1,4 @@
-package com.codewithjava21.weatherapp;
+package com.datastaxtutorials.weatherapp;
 
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
@@ -13,30 +13,45 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
-import com.codewithjava21.weatherapp.langflow.models.LangflowOutput1;
-import com.codewithjava21.weatherapp.langflow.models.LangflowResponse;
-import com.codewithjava21.weatherapp.nws.models.CloudLayer;
-import com.codewithjava21.weatherapp.nws.models.LatestWeather;
+import com.datastax.astra.client.Collection;
+import com.datastax.astra.client.DataAPIClient;
+import com.datastax.astra.client.Database;
+import com.datastax.astra.client.model.Document;
+import com.datastax.astra.client.model.Filter;
+import com.datastax.astra.client.model.Filters;
+import com.datastax.astra.client.model.FindIterable;
+import com.datastax.astra.client.model.FindOptions;
+import com.datastax.astra.client.model.Sort;
+import com.datastax.astra.client.model.Sorts;
+import com.datastaxtutorials.weatherapp.langflow.models.LangflowOutput1;
+import com.datastaxtutorials.weatherapp.langflow.models.LangflowResponse;
+import com.datastaxtutorials.weatherapp.nws.models.CloudLayer;
+import com.datastaxtutorials.weatherapp.nws.models.LatestWeather;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 
 import java.time.Instant;
 import java.time.ZonedDateTime;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.HashMap;
+
+import static com.datastax.astra.client.model.Filters.eq;
+import static com.datastax.astra.client.model.Filters.and;
 
 @RequestMapping("/weather")
 @RestController
 public class WeatherAppController {
 
+	private Collection<Document> collection;
 	private RestTemplate restTemplate;
 	private WeatherAppRepository weatherRepo;
-
+	
 	private HttpHeaders langflowHeader;
 	
 	private static final String LANGFLOW_URL = System.getenv("ASTRA_LANGFLOW_URL");
 	private static final String BEARER_TOKEN = System.getenv("ASTRA_DB_APP_TOKEN");
+	private static final String API_ENDPOINT = System.getenv("ASTRA_DB_API_ENDPOINT");
 	
 	public WeatherAppController(WeatherAppRepository weatherAppRepo) {
 		// build Rest template for calling NWS and Langflow endpoints
@@ -45,9 +60,15 @@ public class WeatherAppController {
 		// instantiate Cassandra repository
 		weatherRepo = weatherAppRepo;
 
+		// define headers for Langflow API
 		langflowHeader = new HttpHeaders();
 		langflowHeader.setContentType(MediaType.APPLICATION_JSON);
 		langflowHeader.add("Authorization", "Bearer " + BEARER_TOKEN);
+		
+		// define Astra DB API connection
+		DataAPIClient client = new DataAPIClient(BEARER_TOKEN);
+		Database dbAPI = client.getDatabase(API_ENDPOINT, "weatherapp");
+		collection = dbAPI.getCollection("weather_data");
 	}
 	
 	@GetMapping("/helloworld")
@@ -55,6 +76,7 @@ public class WeatherAppController {
 		return ResponseEntity.ok("Hello world!\n");
 	}
 
+	// Astra DB calls
 	@PutMapping("/latest/station/{stationid}")
 	public ResponseEntity<WeatherReading> putLatestData(
 			@PathVariable(value="stationid") String stationId) {
@@ -90,7 +112,47 @@ public class WeatherAppController {
 			return ResponseEntity.notFound().build();
 		}
 	}
+	
+	// Astra DB API calls
+	@GetMapping("/astradb/api/latest/station/{stationid}/month/{month}")
+	public ResponseEntity<WeatherReading> getLatestAstraAPIData(
+			@PathVariable(value="stationid") String stationId,
+			@PathVariable(value="month") int monthBucket) {
+		
+		//Optional<Document> weatherReading = collection.findOne(and(eq("station_id",(stationId)),(eq("month_bucket",monthBucket))));
+		Filter filters = Filters.and(eq("station_id",(stationId)),(eq("month_bucket",monthBucket)));
+		Sort sort = Sorts.descending("timestamp");
+		FindOptions findOpts = new FindOptions().sort(sort);
+		FindIterable<Document> weatherDocs = collection.find(filters, findOpts);
 
+		Document weatherTopDoc = weatherDocs.all().get(0);
+		
+		WeatherReading currentReading = mapDocumentToWeatherReading(weatherTopDoc);
+
+		return ResponseEntity.ok(currentReading);
+	}
+		
+	@PutMapping("/astradb/api/latest/station/{stationid}")
+	public ResponseEntity<WeatherReading> putLatestAstraAPIData(
+			@PathVariable(value="stationid") String stationId) {
+		
+		LatestWeather response = restTemplate.getForObject(
+				"https://api.weather.gov/stations/" + stationId + "/observations/latest",
+				LatestWeather.class);
+		
+		Document weatherDoc = mapLatestWeatherToDocument(response, stationId);
+		
+		// save weather reading
+		collection.insertOne(weatherDoc);
+
+		// build response
+		WeatherEntity weatherEntity = mapLatestWeatherToWeatherEntity(response, stationId);
+		WeatherReading currentReading = mapWeatherEntityToWeatherReading(weatherEntity);
+		
+		return ResponseEntity.ok(currentReading);
+	}
+	
+	// Langflow API call
 	public WeatherReading askAgent (AgentRequest req) {
 		
 		String reqJSON = new Gson().toJson(req);
@@ -104,7 +166,6 @@ public class WeatherAppController {
 		
 		LangflowResponse lfResp = resp.getBody();
 		LangflowOutput1[] outputs = lfResp.getOutputs();
-		// String strMessage = outputs[0].getOutputs()[0].getResults().getMessage().getData().getText();
 		
 		return mapLangflowResponseToWeatherReading(outputs);
 	}
@@ -113,12 +174,6 @@ public class WeatherAppController {
 		WeatherReading returnVal = new WeatherReading();
 		String strMessage = outputs[0].getOutputs()[0].getResults().getMessage().getData().getText();
 		strMessage = strMessage.replace("**", "");
-		
-		//JsonObject gson = new Gson().fromJson(strMessage, JsonObject.class);
-		//JsonObject properties = gson.get("properties").getAsJsonObject();
-		//JsonObject temperature = properties.get("temperature").getAsJsonObject();	
-		
-		//System.out.println("Message: " + strMessage);
 
 		int stationPos = strMessage.indexOf("Raw Message:");
 		int tempPos = strMessage.indexOf("Temperature:");
@@ -179,6 +234,83 @@ public class WeatherAppController {
 			
 			cloudsAt = cloudLayer.indexOf("clouds at", cloudsAt + 1);
 			start = cloudsAt - 10;
+		}
+		
+		returnVal.setCloudCover(cloudMap);
+		
+		return returnVal;
+	}
+	
+	private Document mapLatestWeatherToDocument(LatestWeather weather, String stationId) {
+		
+		Document returnVal = new Document();
+		
+		// use timestamp from response to create date
+		Instant timestamp = weather.getProperties().getTimestamp();
+		int bucket = getBucket(timestamp);
+		
+		returnVal.put("station_id", stationId);
+		returnVal.put("month_bucket", bucket);
+		returnVal.put("timestamp", timestamp);
+		returnVal.put("reading_icon", weather.getProperties().getIcon());
+		returnVal.put("station_coordinates_latitude", weather.getGeometry().getCoordinates()[0]);
+		returnVal.put("station_coordinates_longitude", weather.getGeometry().getCoordinates()[1]);
+		returnVal.put("temperature_celsius", weather.getProperties().getTemperature().getValue());
+		returnVal.put("wind_direction_degrees", (int)weather.getProperties().getWindDirection().getValue());
+		returnVal.put("wind_gust_kmh", weather.getProperties().getWindGust().getValue());
+		returnVal.put("precipitation_last_hour", weather.getProperties().getPrecipitationLastHour().getValue());
+		
+		// process cloud layers
+		CloudLayer[] clouds = weather.getProperties().getCloudLayers();
+		Map<Integer,String> cloudMap = new HashMap<>();
+		
+		for (CloudLayer layer : clouds) {
+			// measurements come back as floats, but we need ints for cloud levels
+			cloudMap.put((int)layer.getBase().getValue(), layer.getAmount());
+		}
+		
+		returnVal.put("cloud_cover", cloudMap);
+		
+		return returnVal;
+	}
+	
+	private WeatherReading mapDocumentToWeatherReading(Document doc) {
+		WeatherReading returnVal = new WeatherReading();
+		
+		returnVal.setStationId(doc.getString("station_id"));
+		returnVal.setMonthBucket(doc.getInteger("month_bucket"));
+		returnVal.setStationCoordinatesLatitude(doc.getFloat("station_coordinates_latitude"));
+		returnVal.setStationCoordinatesLongitude(doc.getFloat("station_coordinates_longitude"));
+		returnVal.setTimestamp(doc.getInstant("timestamp"));
+		returnVal.setTemperatureCelsius(doc.getFloat("temperature_celsius"));
+
+		if (doc.getFloat("wind_speed_kmh") != null) {
+			returnVal.setWindSpeedKMH(doc.getFloat("wind_speed_kmh"));
+		}
+		
+		if (doc.getInteger("wind_direction_degrees") != null) {
+			returnVal.setWindDirectionDegrees(doc.getInteger("wind_direction_degrees"));
+		}
+		
+		if (doc.getFloat("wind_gust_kmh") != null) {
+			returnVal.setWindGustKMH(doc.getFloat("wind_gust_kmh"));
+		}
+
+		returnVal.setReadingIcon(doc.getString("reading_icon"));
+		
+		if (doc.getInteger("visibility_m") != null) {
+			returnVal.setVisibilityM(doc.getInteger("visibility_m"));
+		}
+		
+		if (doc.getFloat("precipitation_last_hour") != null) {
+			returnVal.setPrecipitationLastHour(doc.getFloat("precipitation_last_hour"));
+		}
+		
+		Object cloudObj = doc.get("cloud_cover");	 
+		Map<Integer,String> cloudMap = new HashMap<>();
+		
+		if (cloudObj != null) {
+			cloudMap = (Map<Integer,String>)cloudObj;
 		}
 		
 		returnVal.setCloudCover(cloudMap);

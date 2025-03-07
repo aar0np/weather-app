@@ -1,4 +1,4 @@
-package com.codewithjava21.weatherapp.nws.models;
+package com.datastaxtutorials.weatherapp.nws.models;
 
 public class Measurement {
 

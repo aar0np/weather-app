@@ -1,4 +1,4 @@
-package com.codewithjava21.weatherapp.langflow.models;
+package com.datastaxtutorials.weatherapp.langflow.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

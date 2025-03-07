@@ -1,4 +1,4 @@
-package com.codewithjava21.weatherapp;
+package com.datastaxtutorials.weatherapp;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -16,6 +16,7 @@ import java.text.DecimalFormat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 
 import org.springframework.http.ResponseEntity;
 
@@ -162,12 +163,16 @@ public class WeatherMainView extends VerticalLayout {
 	}
 	
 	private void refreshAstra() {
-		ResponseEntity<WeatherReading> latest = controller.getLatestData(
+		//ResponseEntity<WeatherReading> latest = controller.getLatestData(
+		//		stationId.getValue(), Integer.parseInt(month.getValue()));
+		
+		ResponseEntity<WeatherReading> latest = controller.getLatestAstraAPIData(
 				stationId.getValue(), Integer.parseInt(month.getValue()));
 		latestWeather = latest.getBody();
 
 		refreshData(latestWeather);
 	}
+	
 	private void refreshLangflow() {
 
 		String message = "Please retrieve the latest weather data (including the weather icon url) in a text format using this endpoint: https://api.weather.gov/stations/KMSP/observations/latest";
@@ -242,9 +247,11 @@ public class WeatherMainView extends VerticalLayout {
 		List<Cloud> clouds = new ArrayList<>();
 		
 		if (latestWeather.getCloudCover() != null) {
-			for (int key : latestWeather.getCloudCover().keySet()) {
+			for (Entry<Integer, String> entry : latestWeather.getCloudCover().entrySet()) {
 	
-				String description = latestWeather.getCloudCover().get(key);
+				String description = entry.getValue();
+				Object keyObj = entry.getKey();
+				Integer key = Integer.parseInt(keyObj.toString());
 				if (!unitSelector.getValue().equals("Celsius/Metric")) {
 					key = computeFeet(key);
 				}

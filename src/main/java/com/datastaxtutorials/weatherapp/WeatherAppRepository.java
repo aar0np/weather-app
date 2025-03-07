@@ -1,4 +1,4 @@
-package com.codewithjava21.weatherapp;
+package com.datastaxtutorials.weatherapp;
 
 import org.springframework.data.cassandra.repository.CassandraRepository;
 import org.springframework.data.cassandra.repository.Query;

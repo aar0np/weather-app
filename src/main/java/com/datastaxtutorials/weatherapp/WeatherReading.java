@@ -1,4 +1,4 @@
-package com.codewithjava21.weatherapp;
+package com.datastaxtutorials.weatherapp;
 
 import java.time.Instant;
 import java.util.Map;
