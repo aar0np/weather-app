@@ -219,7 +219,12 @@ public class WeatherMainView extends VerticalLayout {
 		windSpeed.setValue(windSpd.toString());
 		precipitationLastHour.setValue(precip.toString());
 		dateTime.setValue(time.toString());
-		iconImage.setSrc(iconURL);
+		
+		if (iconURL != null && iconURL.contains("http")) {
+			iconImage.setSrc(iconURL);
+		} else {
+			iconImage.setSrc("https://api.weather.gov/icons/land/day/skc?size=medium");
+		}
 
 		if (visib > 0) {
 			visibility.setValue(visib.toString());
@@ -236,15 +241,17 @@ public class WeatherMainView extends VerticalLayout {
 						
 		List<Cloud> clouds = new ArrayList<>();
 		
-		for (int key : latestWeather.getCloudCover().keySet()) {
-
-			String description = latestWeather.getCloudCover().get(key);
-			if (!unitSelector.getValue().equals("Celsius/Metric")) {
-				key = computeFeet(key);
+		if (latestWeather.getCloudCover() != null) {
+			for (int key : latestWeather.getCloudCover().keySet()) {
+	
+				String description = latestWeather.getCloudCover().get(key);
+				if (!unitSelector.getValue().equals("Celsius/Metric")) {
+					key = computeFeet(key);
+				}
+				
+				Cloud cloud = new Cloud(key,description);
+				clouds.add(cloud);
 			}
-			
-			Cloud cloud = new Cloud(key,description);
-			clouds.add(cloud);
 		}
 		
 		cloudGrid.setItems(clouds);
