@@ -252,8 +252,8 @@ public class WeatherMainView extends VerticalLayout {
 			for (Entry<Integer, String> entry : latestWeather.getCloudCover().entrySet()) {
 	
 				String description = entry.getValue();
-				Object keyObj = entry.getKey();
-				Integer key = Integer.parseInt(keyObj.toString());
+				Integer key = entry.getKey();
+
 				if (!unitSelector.getValue().equals("Celsius/Metric")) {
 					key = computeFeet(key);
 				}

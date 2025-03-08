@@ -34,6 +34,7 @@ import java.time.ZonedDateTime;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 import static com.datastax.astra.client.model.Filters.eq;
 
@@ -266,11 +267,18 @@ public class WeatherAppController {
 			returnVal.setPrecipitationLastHour(doc.getFloat("precipitation_last_hour"));
 		}
 		
-		Object cloudObj = doc.get("cloud_cover");	 
+		LinkedHashMap<Integer,String> cloudObj = (LinkedHashMap<Integer,String>) doc.get("cloud_cover");	 
 		Map<Integer,String> cloudMap = new HashMap<>();
 		
 		if (cloudObj != null) {
-			cloudMap = (Map<Integer,String>)cloudObj;
+			for (Map.Entry<Integer, String> entry : cloudObj.entrySet()) {
+
+				String description = entry.getValue();
+				Object keyObj = entry.getKey();
+				Integer key = Integer.parseInt(keyObj.toString());
+				
+				cloudMap.put(key, description);
+			}
 		}
 		
 		returnVal.setCloudCover(cloudMap);
