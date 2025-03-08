@@ -44,8 +44,10 @@ public class WeatherMainView extends VerticalLayout {
 	public record Cloud(int elevation, String desc) {
 	}
 	
-	public WeatherMainView(WeatherAppRepository repo) {
-		controller = new WeatherAppController(repo);
+	//public WeatherMainView(WeatherAppRepository repo) {
+	public WeatherMainView() {
+		//controller = new WeatherAppController(repo);
+		controller = new WeatherAppController();
 		
 		// set default values
 		Integer monthBucket = controller.getBucket(Instant.now());

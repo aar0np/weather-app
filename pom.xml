@@ -19,15 +19,6 @@
 	</properties>
 	<dependencies>
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-cassandra</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.datastax.astra</groupId>
-			<artifactId>astra-spring-boot-3x-starter</artifactId>
-			<version>1.2.9</version>
-		</dependency>
-		<dependency>
 		    <groupId>com.datastax.astra</groupId>
 		    <artifactId>astra-db-java</artifactId>
 		    <version>1.5.3</version>

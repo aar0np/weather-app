@@ -33,11 +33,9 @@ import java.time.Instant;
 import java.time.ZonedDateTime;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.HashMap;
 
 import static com.datastax.astra.client.model.Filters.eq;
-import static com.datastax.astra.client.model.Filters.and;
 
 @RequestMapping("/weather")
 @RestController
@@ -45,7 +43,7 @@ public class WeatherAppController {
 
 	private Collection<Document> collection;
 	private RestTemplate restTemplate;
-	private WeatherAppRepository weatherRepo;
+	//private WeatherAppRepository weatherRepo;
 	
 	private HttpHeaders langflowHeader;
 	
@@ -53,12 +51,13 @@ public class WeatherAppController {
 	private static final String BEARER_TOKEN = System.getenv("ASTRA_DB_APP_TOKEN");
 	private static final String API_ENDPOINT = System.getenv("ASTRA_DB_API_ENDPOINT");
 	
-	public WeatherAppController(WeatherAppRepository weatherAppRepo) {
+	//public WeatherAppController(WeatherAppRepository weatherAppRepo) {
+	public WeatherAppController() {
 		// build Rest template for calling NWS and Langflow endpoints
 		restTemplate = new RestTemplateBuilder().build();
 
-		// instantiate Cassandra repository
-		weatherRepo = weatherAppRepo;
+		//// instantiate Cassandra repository
+		//weatherRepo = weatherAppRepo;
 
 		// define headers for Langflow API
 		langflowHeader = new HttpHeaders();
@@ -75,43 +74,6 @@ public class WeatherAppController {
 	public ResponseEntity<String> getHello() {
 		return ResponseEntity.ok("Hello world!\n");
 	}
-
-	// Astra DB calls
-	@PutMapping("/latest/station/{stationid}")
-	public ResponseEntity<WeatherReading> putLatestData(
-			@PathVariable(value="stationid") String stationId) {
-		
-		LatestWeather response = restTemplate.getForObject(
-				"https://api.weather.gov/stations/" + stationId + "/observations/latest",
-				LatestWeather.class);
-		
-		// map latest reading to a WeatherEntity
-		WeatherEntity weatherEntity = mapLatestWeatherToWeatherEntity(response, stationId);
-		
-		// save weather reading
-		weatherRepo.save(weatherEntity);
-		
-		WeatherReading currentReading = mapWeatherEntityToWeatherReading(weatherEntity);
-		
-		return ResponseEntity.ok(currentReading);
-	}
-	
-	@GetMapping("/latest/station/{stationid}/month/{month}")
-	public ResponseEntity<WeatherReading> getLatestData(
-			@PathVariable(value="stationid") String stationId,
-			@PathVariable(value="month") int monthBucket) {
-		
-		WeatherEntity recentWeather =
-				weatherRepo.findByStationIdAndMonthBucket(stationId, monthBucket);
-		
-		WeatherReading currentReading = mapWeatherEntityToWeatherReading(recentWeather);
-		
-		if (currentReading != null) {
-			return ResponseEntity.ok(currentReading);
-		} else {
-			return ResponseEntity.notFound().build();
-		}
-	}
 	
 	// Astra DB API calls
 	@GetMapping("/astradb/api/latest/station/{stationid}/month/{month}")
@@ -119,7 +81,6 @@ public class WeatherAppController {
 			@PathVariable(value="stationid") String stationId,
 			@PathVariable(value="month") int monthBucket) {
 		
-		//Optional<Document> weatherReading = collection.findOne(and(eq("station_id",(stationId)),(eq("month_bucket",monthBucket))));
 		Filter filters = Filters.and(eq("station_id",(stationId)),(eq("month_bucket",monthBucket)));
 		Sort sort = Sorts.descending("timestamp");
 		FindOptions findOpts = new FindOptions().sort(sort);
@@ -146,8 +107,7 @@ public class WeatherAppController {
 		collection.insertOne(weatherDoc);
 
 		// build response
-		WeatherEntity weatherEntity = mapLatestWeatherToWeatherEntity(response, stationId);
-		WeatherReading currentReading = mapWeatherEntityToWeatherReading(weatherEntity);
+		WeatherReading currentReading = mapLatestWeatherToWeatherReading(response);
 		
 		return ResponseEntity.ok(currentReading);
 	}
@@ -318,56 +278,32 @@ public class WeatherAppController {
 		return returnVal;
 	}
 	
-	private WeatherEntity mapLatestWeatherToWeatherEntity(LatestWeather weather, String stationId) {
+	private WeatherReading mapLatestWeatherToWeatherReading(LatestWeather latest) {
+		WeatherReading returnVal = new WeatherReading();
 		
-		WeatherEntity returnVal = new WeatherEntity();
-		
-		// use timestamp from response to create date
-		Instant timestamp = weather.getProperties().getTimestamp();
-		int bucket = getBucket(timestamp);
-		
-		// gen PK
-		WeatherPrimaryKey key = new WeatherPrimaryKey(stationId, bucket, timestamp);
-		
-		returnVal.setPrimaryKey(key);
-		returnVal.setReadingIcon(weather.getProperties().getIcon());
-		returnVal.setStationCoordinatesLatitude(weather.getGeometry().getCoordinates()[0]);
-		returnVal.setStationCoordinatesLongitude(weather.getGeometry().getCoordinates()[1]);
-		returnVal.setTemperatureCelsius(weather.getProperties().getTemperature().getValue());
-		returnVal.setWindDirectionDegrees((int)weather.getProperties().getWindDirection().getValue());
-		returnVal.setWindGustKMH(weather.getProperties().getWindGust().getValue());
-		returnVal.setPrecipitationLastHour(weather.getProperties().getPrecipitationLastHour().getValue());
+		returnVal.setStationId(latest.getProperties().getStation());
+		returnVal.setMonthBucket(getBucket(latest.getProperties().getTimestamp()));
+		returnVal.setStationCoordinatesLatitude(latest.getGeometry().getCoordinates()[0]);
+		returnVal.setStationCoordinatesLongitude(latest.getGeometry().getCoordinates()[1]);
+		returnVal.setTimestamp(latest.getProperties().getTimestamp());
+		returnVal.setTemperatureCelsius(latest.getProperties().getTemperature().getValue());
+		returnVal.setWindSpeedKMH(latest.getProperties().getWindSpeed().getValue());
+		returnVal.setWindDirectionDegrees((int)latest.getProperties().getWindDirection().getValue());
+		returnVal.setWindGustKMH(latest.getProperties().getWindGust().getValue());
+		returnVal.setReadingIcon(latest.getProperties().getIcon());
+		returnVal.setVisibilityM((int)latest.getProperties().getVisibility().getValue());
+		returnVal.setPrecipitationLastHour(latest.getProperties().getPrecipitationLastHour().getValue());
 		
 		// process cloud layers
-		CloudLayer[] clouds = weather.getProperties().getCloudLayers();
+		CloudLayer[] clouds = latest.getProperties().getCloudLayers();
 		Map<Integer,String> cloudMap = new HashMap<>();
-		
+				
 		for (CloudLayer layer : clouds) {
 			// measurements come back as floats, but we need ints for cloud levels
 			cloudMap.put((int)layer.getBase().getValue(), layer.getAmount());
 		}
 		
 		returnVal.setCloudCover(cloudMap);
-		
-		return returnVal;
-	}
-	
-	private WeatherReading mapWeatherEntityToWeatherReading(WeatherEntity entity) {
-		WeatherReading returnVal = new WeatherReading();
-		
-		returnVal.setStationId(entity.getPrimaryKey().getStationId());
-		returnVal.setMonthBucket(entity.getPrimaryKey().getMonthBucket());
-		returnVal.setStationCoordinatesLatitude(entity.getStationCoordinatesLatitude());
-		returnVal.setStationCoordinatesLongitude(entity.getStationCoordinatesLongitude());
-		returnVal.setTimestamp(entity.getPrimaryKey().getTimestamp());
-		returnVal.setTemperatureCelsius(entity.getTemperatureCelsius());
-		returnVal.setWindSpeedKMH(entity.getWindSpeedKMH());
-		returnVal.setWindDirectionDegrees(entity.getWindDirectionDegrees());
-		returnVal.setWindGustKMH(entity.getWindGustKMH());
-		returnVal.setReadingIcon(entity.getReadingIcon());
-		returnVal.setVisibilityM(entity.getVisibilityM());
-		returnVal.setPrecipitationLastHour(entity.getPrecipitationLastHour());
-		returnVal.setCloudCover(entity.getCloudCover());
 		
 		return returnVal;
 	}
