@@ -57,11 +57,11 @@ The Weather Application is exposed locally at [http://127.0.0.1:8080](http://127
 
 The most-recent reading from the NWS can be loaded into the application by invoking the following _PUT_ endpoint (Weather Application needs to be running): [http://127.0.0.1:8080/weather/latest/station/kmsp](http://127.0.0.1:8080/weather/latest/station/kmsp).  This can be run using the [curl](https://www.curl.se) utility:
 
-    curl -X PUT http://127.0.0.1:8080/weather/latest/station/kmsp
-
+    curl -X PUT http://127.0.0.1:8080/weather/astradb/api/latest/station/kmsp
+    
 ### Viewing Data:
 
 In addition to the user interface, the most-recently loaded weather reading from the NWS (stored in the Weather Application's database) can be viewed on the following _GET_ endpoint: [http://127.0.0.1:8080/weather/latest/station/kmsp/month/202503](http://127.0.0.1:8080/weather/latest/station/kmsp/month/202503).  Note that the month is specified in the `YYYYMM` format.
 
-    curl -X GET http://127.0.0.1:8080/weather/latest/station/kmsp/month/202503
+    curl -X GET http://127.0.0.1:8080/weather/astradb/api/latest/station/kmsp/month/202503
 
