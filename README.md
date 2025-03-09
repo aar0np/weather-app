@@ -37,6 +37,7 @@ export ASTRA_LANGFLOW_URL=https://api.langflow.astra.datastax.com/lf/6f-not-real
 
  - Java 17 (JDK)
  - Maven
+ - dependencies for Spring Boot and Vaadin
 
 ### Build command
 
@@ -50,7 +51,7 @@ export ASTRA_LANGFLOW_URL=https://api.langflow.astra.datastax.com/lf/6f-not-real
 
 The Weather Application is exposed locally at [http://127.0.0.1:8080](http://127.0.0.1:8080). It also has restful endpoints which allow it to both fetch and display data. When the application first comes up, it will not show any data. To remedy this, click the "Refresh" button. If data is present for the current month, the most-recent weather reading will be displayed. If there is no data for the current month, nothing will be displayed. See the _Loading Data_ step below.
 
-_Note: The station code of "kmsp" (for the Minneapolis/St. Paul International Airport) is the default in this application. Additional station codes can be found at the official NWS website: [https://forecast.weather.gov](https://forecast.weather.gov), such as "knyc" (for New York City's Central Park weather station). _
+*Note: The station code of "kmsp" (for the Minneapolis/St. Paul International Airport) is the default in this application. Additional station codes can be found at the official NWS website: [https://forecast.weather.gov](https://forecast.weather.gov), such as "knyc" (for New York City's Central Park weather station).*
 
 ### Loading Data:
 
