@@ -1,87 +1,56 @@
 # WeatherApp
-A simple weather application written in Java 21; intended to be used with the book "Code with Java 21" (BPB Publishing). This application interacts with the National Weather Service (NWS) API, and retrieves data to be served by the application out of an Apache Cassandra database.
+A simple weather application intended to be run on a Raspberry Pi. This application interacts with the National Weather Service (NWS) API, and retrieves data to be served by the application out of a DataStax Astra DB database. It also interacts with a DataStax Langflow Agent flow. Both the database and agent must be built ahead of time.
 
-<img src="weatherApp_CwJ21.png" width="200" align=right />
+<img src="weatherapp.png" width="200" align=right />
 
 ## Database
 
 This application requires a running [Astra DB](https://astra.datastax.com) cloud database. The "free tier" of Astra DB should provide more than enough resources to run the application. If the Astra database is "hibernated," it will need to be "resumed" before running the applicaiton.
 
-_Note: As of this writing, only databases created on the Google Cloud Platform (GCP) provider qualify for Astra DB's free tier._
+It is recommended to name the keyspace `weatherapp`. Really, the keyspace can be named anything, but any changes need to be reflected in the controller code.
 
-In the book "Code with Java 21," the keyspace is named "weatherapp." Really, the keyspace can be named anything, but its name needs to be reflected in the **ASTRA_DB_KEYSPACE** environment variable.
+Inside the keyspace, create a non-vector-enabled collection named `weather_data`.
 
-Whatever the name of the keyspace, it should have the following Cassandra table created within:
+A token from an appropriately-scoped role is required to be generated, as is the Astra Database's specific Data API endpoint.
 
-```sql
-CREATE TABLE weather_by_station_by_month (
-    station_id TEXT,
-    month_bucket INT,
-    reading_timestamp TIMESTAMP,
-    reading_icon TEXT,
-    station_coordinates_lat FLOAT,
-    station_coordinates_lon FLOAT,
-    temperature_c FLOAT,
-    wind_direction_deg INT,
-    wind_speed_kmh FLOAT,
-    wind_gust_kmh FLOAT,
-    visibility_m INT,
-    precipitation_last_hour FLOAT,
-    cloud_cover MAP<INT,TEXT>,
-    PRIMARY KEY ((station_id,month_bucket),reading_timestamp)
-) WITH CLUSTERING ORDER BY (reading_timestamp DESC);
-```
-
-A token from an appropriately-scoped role is required. As this application use Spring Data underneath, the application role should be "Database Administrator." This is because Spring Data needs the ability to create tables, even if instructed not to do so.
+The Langflow Agent flow can be quickly created by creating a new flow, and selecting the "Simple Agent" template. That's really all there is to it. Be sure to click on the "API" tab, and make note of the flow's Langflow API endpoint. The same token generated in the above step will work just fine.
 
 ## Environment:
 
 This application requires the following environment variables to be set:
 
- - **ASTRA_DB_KEYSPACE** - The database keyspace containing the tables required by the Weather Application.
- - **ASTRA_DB_REGION** - The cloud region of the database.
- - **ASTRA_DB_ID** - The identifier of the database.
  - **ASTRA_DB_APP_TOKEN** - The token obtained from Astra DB.
+ - **ASTRA_DB_API_ENDPOINT** - The Data API endpoint for the specific instance of Astra DB.
+ - **ASTRA_LANGFLOW_URL** - The Langflow API endpoint for the specific flow.
 
-In a Mac/Linux environment, the environment varaibles can be set from a terminal like this (example):
-
-```
-export ASTRA_DB_KEYSPACE=weatherapp
-export ASTRA_DB_REGION=us-east1
-export ASTRA_DB_ID=31111111-1111-4111-1111-111111111111
-export ASTRA_DB_APP_TOKEN=AstraCS:BxinhBlahBlahBlahFHqKZw:d6532818082NotARealTokenc18d40
-```
-
-In a Windows environment, the environment variables can be set from the commmand line like this:
+In a Mac/Linux/Raspberry Pi OS environment, the environment varaibles can be set from a terminal like this (example):
 
 ```
-set ASTRA_DB_KEYSPACE=weatherapp
-set ASTRA_DB_REGION=us-east1
-set ASTRA_DB_ID=31111111-1111-4111-1111-111111111111
-set ASTRA_DB_APP_TOKEN=AstraCS:BxinhBlahBlahBlahFHqKZw:d6532818082NotARealTokenc18d40
+export ASTRA_DB_API_ENDPOINT=https://not-real-us-east1.apps.astra.datastax.com
+export ASTRA_DB_APP_TOKEN=AstraCS:wtqNOTglg:725REAL238dEITHER563486d
+export ASTRA_LANGFLOW_URL=https://api.langflow.astra.datastax.com/lf/6f-not-real-9493/api/v1/run/060d2-not-real-caef?stream=false
 ```
-
 
 ## To build:
 
 ### Build Requirements
 
- - Java 21 (JDK)
+ - Java 17 (JDK)
  - Maven
 
 ### Build command
 
-    mvn clean install
+    mvn clean install -Pproduction
 
 ### Running the build
 
-    mvn spring-boot:run
+    java -jar target/weatherapp-0.0.1-SNAPSHOT.jar
 
 ## Usage:
 
-The Weather Application has restful endpoints which allow it to both fetch and display data. When the application first comes up, it will not show any data. To remedy this, click the "Refresh" button. If data is present for the current month, the most-recent weather reading will be displayed. If there is no data for the current month, nothing will be displayed.
+The Weather Application is exposed locally at [http://127.0.0.1:8080](http://127.0.0.1:8080). It also has restful endpoints which allow it to both fetch and display data. When the application first comes up, it will not show any data. To remedy this, click the "Refresh" button. If data is present for the current month, the most-recent weather reading will be displayed. If there is no data for the current month, nothing will be displayed. See the _Loading Data_ step below.
 
-_Note: The station code of "kmsp" (for the Minneapolis/St. Paul International Airport) is the default in this application. Additional station codes can be found on this NWS page: [https://forecast.weather.gov/stations.php?foo=2](https://forecast.weather.gov/stations.php?foo=2), such as "knyc" (for New York City's Central Park weather station. _
+_Note: The station code of "kmsp" (for the Minneapolis/St. Paul International Airport) is the default in this application. Additional station codes can be found at the official NWS website: [https://forecast.weather.gov](https://forecast.weather.gov), such as "knyc" (for New York City's Central Park weather station). _
 
 ### Loading Data:
 
@@ -91,7 +60,7 @@ The most-recent reading from the NWS can be loaded into the application by invok
 
 ### Viewing Data:
 
-In addition to the user interface, the most-recently loaded weather reading from the NWS (stored in the Weather Application's database) can be viewed on the following _GET_ endpoint: [http://127.0.0.1:8080/weather/latest/station/kmsp/month/202307](http://127.0.0.1:8080/weather/latest/station/kmsp/month/202307).  Note that the month is specified in the `YYYYMM` format.
+In addition to the user interface, the most-recently loaded weather reading from the NWS (stored in the Weather Application's database) can be viewed on the following _GET_ endpoint: [http://127.0.0.1:8080/weather/latest/station/kmsp/month/202503](http://127.0.0.1:8080/weather/latest/station/kmsp/month/202503).  Note that the month is specified in the `YYYYMM` format.
 
-    curl -X GET http://127.0.0.1:8080/weather/latest/station/kmsp/month/202307
+    curl -X GET http://127.0.0.1:8080/weather/latest/station/kmsp/month/202503
 

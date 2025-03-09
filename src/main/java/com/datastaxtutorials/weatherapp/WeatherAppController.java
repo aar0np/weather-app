@@ -54,7 +54,7 @@ public class WeatherAppController {
 	
 	//public WeatherAppController(WeatherAppRepository weatherAppRepo) {
 	public WeatherAppController() {
-		// build Rest template for calling NWS and Langflow endpoints
+		// build Rest template for calling NWS endpoint
 		restTemplate = new RestTemplateBuilder().build();
 
 		//// instantiate Cassandra repository
@@ -87,11 +87,13 @@ public class WeatherAppController {
 		FindOptions findOpts = new FindOptions().sort(sort);
 		FindIterable<Document> weatherDocs = collection.find(filters, findOpts);
 
-		Document weatherTopDoc = weatherDocs.all().get(0);
+		if (weatherDocs == null || weatherDocs.all().size() == 0) {
+			Document weatherTopDoc = weatherDocs.all().get(0);
+			WeatherReading currentReading = mapDocumentToWeatherReading(weatherTopDoc);
+			return ResponseEntity.ok(currentReading);
+		}
 		
-		WeatherReading currentReading = mapDocumentToWeatherReading(weatherTopDoc);
-
-		return ResponseEntity.ok(currentReading);
+		return ResponseEntity.ok(new WeatherReading());
 	}
 		
 	@PutMapping("/astradb/api/latest/station/{stationid}")
@@ -219,6 +221,7 @@ public class WeatherAppController {
 		returnVal.put("temperature_celsius", weather.getProperties().getTemperature().getValue());
 		returnVal.put("wind_direction_degrees", (int)weather.getProperties().getWindDirection().getValue());
 		returnVal.put("wind_gust_kmh", weather.getProperties().getWindGust().getValue());
+		returnVal.put("wind_speed_kmh", weather.getProperties().getWindSpeed().getValue());
 		returnVal.put("precipitation_last_hour", weather.getProperties().getPrecipitationLastHour().getValue());
 		
 		// process cloud layers

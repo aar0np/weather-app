@@ -177,7 +177,8 @@ public class WeatherMainView extends VerticalLayout {
 	
 	private void refreshLangflow() {
 
-		String message = "Please retrieve the latest weather data (including the weather icon url) in a text format using this endpoint: https://api.weather.gov/stations/KMSP/observations/latest";
+		String message = "Please retrieve the latest weather data (including the weather icon url) in a text format using this endpoint: "
+				+ "https://api.weather.gov/stations/" + stationId.getValue() + "/observations/latest";
 		latestWeather = controller.askAgent(new AgentRequest(message));
 	
 		refreshData(latestWeather);
