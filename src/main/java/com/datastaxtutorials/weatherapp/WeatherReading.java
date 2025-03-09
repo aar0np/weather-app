@@ -5,7 +5,7 @@ import java.util.Map;
 
 public class WeatherReading {
 	private String stationId;
-	private int monthBucket;
+	private String monthBucket;
 	private Instant timestamp;
 	private String readingIcon;
 	private float stationCoordinatesLatitude;
@@ -26,11 +26,11 @@ public class WeatherReading {
 		this.stationId = stationId;
 	}
 	
-	public int getMonthBucket() {
+	public String getMonthBucket() {
 		return monthBucket;
 	}
 	
-	public void setMonthBucket(int monthBucket) {
+	public void setMonthBucket(String monthBucket) {
 		this.monthBucket = monthBucket;
 	}
 	

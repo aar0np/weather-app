@@ -169,7 +169,7 @@ public class WeatherMainView extends VerticalLayout {
 		//		stationId.getValue(), Integer.parseInt(month.getValue()));
 		
 		ResponseEntity<WeatherReading> latest = controller.getLatestAstraAPIData(
-				stationId.getValue(), Integer.parseInt(month.getValue()));
+				stationId.getValue(), month.getValue());
 		latestWeather = latest.getBody();
 
 		refreshData(latestWeather);

@@ -35,6 +35,7 @@ import java.time.ZonedDateTime;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 
 import static com.datastax.astra.client.model.Filters.eq;
 
@@ -80,15 +81,16 @@ public class WeatherAppController {
 	@GetMapping("/astradb/api/latest/station/{stationid}/month/{month}")
 	public ResponseEntity<WeatherReading> getLatestAstraAPIData(
 			@PathVariable(value="stationid") String stationId,
-			@PathVariable(value="month") int monthBucket) {
+			@PathVariable(value="month") String monthBucket) {
 		
 		Filter filters = Filters.and(eq("station_id",(stationId)),(eq("month_bucket",monthBucket)));
 		Sort sort = Sorts.descending("timestamp");
 		FindOptions findOpts = new FindOptions().sort(sort);
 		FindIterable<Document> weatherDocs = collection.find(filters, findOpts);
-
-		if (weatherDocs == null || weatherDocs.all().size() == 0) {
-			Document weatherTopDoc = weatherDocs.all().get(0);
+		List<Document> weatherDocsList = weatherDocs.all();
+		
+		if (weatherDocsList.size() > 0) {
+			Document weatherTopDoc = weatherDocsList.get(0);
 			WeatherReading currentReading = mapDocumentToWeatherReading(weatherTopDoc);
 			return ResponseEntity.ok(currentReading);
 		}
@@ -210,10 +212,10 @@ public class WeatherAppController {
 		
 		// use timestamp from response to create date
 		Instant timestamp = weather.getProperties().getTimestamp();
-		int bucket = getBucket(timestamp);
+		Integer bucket = getBucket(timestamp);
 		
 		returnVal.put("station_id", stationId);
-		returnVal.put("month_bucket", bucket);
+		returnVal.put("month_bucket", bucket.toString());
 		returnVal.put("timestamp", timestamp);
 		returnVal.put("reading_icon", weather.getProperties().getIcon());
 		returnVal.put("station_coordinates_latitude", weather.getGeometry().getCoordinates()[0]);
@@ -242,7 +244,7 @@ public class WeatherAppController {
 		WeatherReading returnVal = new WeatherReading();
 		
 		returnVal.setStationId(doc.getString("station_id"));
-		returnVal.setMonthBucket(doc.getInteger("month_bucket"));
+		returnVal.setMonthBucket(doc.getString("month_bucket"));
 		returnVal.setStationCoordinatesLatitude(doc.getFloat("station_coordinates_latitude"));
 		returnVal.setStationCoordinatesLongitude(doc.getFloat("station_coordinates_longitude"));
 		returnVal.setTimestamp(doc.getInstant("timestamp"));
@@ -293,7 +295,7 @@ public class WeatherAppController {
 		WeatherReading returnVal = new WeatherReading();
 		
 		returnVal.setStationId(latest.getProperties().getStation());
-		returnVal.setMonthBucket(getBucket(latest.getProperties().getTimestamp()));
+		returnVal.setMonthBucket(getBucket(latest.getProperties().getTimestamp()).toString());
 		returnVal.setStationCoordinatesLatitude(latest.getGeometry().getCoordinates()[0]);
 		returnVal.setStationCoordinatesLongitude(latest.getGeometry().getCoordinates()[1]);
 		returnVal.setTimestamp(latest.getProperties().getTimestamp());
@@ -319,7 +321,7 @@ public class WeatherAppController {
 		return returnVal;
 	}
 	
-	protected int getBucket(Instant timestamp) {
+	protected Integer getBucket(Instant timestamp) {
 		
 		ZonedDateTime date = ZonedDateTime.parse(timestamp.toString());
 		// parse date into year and month to create the month bucket
